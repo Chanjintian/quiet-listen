@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>静听</title>
+    <link rel="stylesheet" href="../css/reset.css">
+    <link rel="stylesheet" href="./css/iconfont.css">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
+</head>
+<body>
+   <div id="player">
+       <div class="header clearfix">
+           <div class="left header-title"><i class="iconfont icon-music"></i>静听</div>
+           <div class="right header-search">
+               <input type="text" v-model="query" placeholder="请输入歌手名字..." @keyup.enter="searchMusic">
+               <i class="iconfont icon-search" @click="searchMusic"></i>
+           </div>
+       </div>
+       <div class="main clearfix">
+           <!-- 左侧音乐列表 -->
+           <div class="left-side left"  v-cloak>
+               <ul>
+                   <li class="music-item" v-for="item in musicList">
+                       <i class="iconfont icon-bofang2" @click="playMusic(item.id)"></i>
+                       <span class="music-name">{{ item.name }}</span>
+                       <i class="iconfont icon-MV right clearfix" v-if="item.mvid!=0" @click="playMv(item.mvid)"></i>
+                   </li>
+               </ul>
+           </div>
+           <div class="right-side right"  v-cloak>
+               <div class="right-side-title">热门留言</div>
+               <ul>
+                   <!-- 留言列表 -->
+                   <li class="liuyan-item clearfix" v-for="item in hotCommentsList">
+                      <div class="logo left">
+                          <img :src="item.user.avatarUrl" alt="">
+                      </div> 
+                      <div class="liuyan-info right">
+                          <div class="username">{{ item.user.nickname }}</div>
+                          <div class="mess">{{ item.content }}</div>
+                      </div>
+                   </li>
+               </ul>
+           </div>
+           <div class="center">
+               <div id="cd" class="image">
+                   <img :src="picUrl" alt="">
+               </div>
+           </div>
+       </div>
+       <div class="footer">
+           <!-- <div class="footer-container">
+                <i class="iconfont icon-bofang1" style="display: none;"></i>
+                <i class="footer-item iconfont icon-bofang"></i>
+                <span class="footer-item">00:00 / 00:00</span>
+                <div class="footer-item bar"></div>
+                <i class="iconfont icon-V footer-item"></i>
+            </div> -->
+            <audio id="audio" :src="musicUrl" controls autoplay loop class="myaudio" @play="played" @pause="paused"></audio>
+       </div>
+
+        <!-- mv区域 -->
+        <div id="mask" v-show="isShow" @click="hid" v-cloak></div>
+        <video id="vedio" v-show="isShow" :src="mvUrl" controls autoplay loop v-cloak></video>
+   </div>
+</body>
+<!-- 开发环境版本，包含了有帮助的命令行警告 -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<!-- <script src="../../js/vue.js"></script> -->
+<!-- 功能强大的网络请求库 -->
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+// 歌曲搜索接口：https://autumnfish.cn/search
+// 请求方法：get
+// 请求参数：keyword（查询的关键字）
+// 相应内容：歌曲搜索结果
+
+// 歌曲url获取
+// 请求地址：https://autumnfish.cn/song/url
+// 请求方法：get
+// 请求参数：id(歌曲id)
+// 响应内容：歌曲的url
+
+// 歌曲详情获取
+// 请求地址：https://autumnfish.cn/song/detail
+// 请求方法：get
+// 请求参数：ids(歌曲id)
+// 响应内容：歌曲详情。包含封面信息
+
+// 热门评论获取
+// 请求地址：https://autumnfish.cn/comment/hot?type=0
+// 请求方法：get
+// 请求参数：ids(歌曲id，type固定为0)
+// 响应内容：歌曲的热门评论
+
+// mv地址获取
+// 请求地址：https://autumnfish.cn/mv/url
+// 请求方法：get
+// 请求参数：id(mvid，为0则说明没有mv)
+// 响应内容：mv地址
+
+    // 去掉警告
+    Vue.config.productionTip = false;
+
+    var app = new Vue({
+        el:"#player",
+        data:{
+            // 关键字
+            query:"",
+            // 歌曲列表
+            musicList:[],
+            // 歌曲地址
+            musicUrl:"",
+            // 歌曲封面地址
+            picUrl:"../image/陈冰1.jpg",
+            // 热评列表
+            hotCommentsList:[],
+            // 歌曲播放状态
+            isPlaying:false,
+            // mv地址
+            mvUrl:"",
+            // 确认弹出层显示与隐藏
+            isShow:false
+        },
+        methods:{
+            searchMusic:function(){
+                var that = this;
+                axios.get("https://autumnfish.cn/search?keywords="+this.query).then(
+                    function(response){
+                        console.log(response.data.result.songs);
+                        that.musicList = response.data.result.songs;
+                    },function(error){
+                        alert("请求错误！");
+                    })
+            },
+            playMusic:function(musicId){
+                // console.log(musicId);
+                var that = this;
+                // 获取歌曲地址
+                axios.get("https://autumnfish.cn/song/url?id="+musicId).then(
+                    function(response){
+                        // console.log(response.data.data[0].url);
+                        that.musicUrl = response.data.data[0].url;
+                },function(error){
+                    alert("请求错误！");
+                })
+
+                //获取歌曲详情
+                axios.get("https://autumnfish.cn/song/detail?ids="+musicId).then(
+                    function(response){
+                        // console.log(response.data.songs[0].al.picUrl);
+                        that.picUrl = response.data.songs[0].al.picUrl;
+                },function(error){
+                    alert("请求错误！");
+                })
+
+                // 获取热门评论
+                axios.get("https://autumnfish.cn/comment/hot?type=0&id="+musicId).then(
+                    function(response){
+                        that.hotCommentsList = response.data.hotComments;
+                },function(error){
+                    alert("请求错误！");
+                })
+            },
+            played:function(){
+                this.isPlaying = true;
+                var cd = document.getElementById("cd");
+                cd.style.animationPlayState = "running";
+            },
+            paused:function(){
+                this.isPlaying = false;
+                var cd = document.getElementById("cd");
+                cd.style.animationPlayState = "paused";
+            },
+            playMv:function(mvID){
+                var that = this;
+                axios.get("https://autumnfish.cn/mv/url?id="+mvID).then(
+                    function(response){
+                        var aud = document.getElementById("audio");
+                        aud.pause();
+                        that.mvUrl = response.data.data.url;
+                        that.isShow = !that.isShow;
+                },function(error){
+                    alert("请求错误！");
+                })
+            },
+            hid:function(){
+                var ved = document.getElementById("vedio");
+                ved.pause();
+                this.isShow = false;
+            }
+        }
+    })
+</script>
+</html>
